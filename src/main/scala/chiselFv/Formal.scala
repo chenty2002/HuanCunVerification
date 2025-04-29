@@ -1,6 +1,6 @@
 package chiselFv
 
-import chisel3.experimental.SourceInfo
+import chisel3.internal.sourceinfo.SourceInfo
 import chisel3._
 
 

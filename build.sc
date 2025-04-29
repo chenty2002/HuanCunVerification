@@ -94,6 +94,10 @@ object HuanCunVerification extends SbtModule with ScalafmtModule with CommonModu
 
   def huancunModule: ScalaModule = huancun
 
+  override def moduleDeps = super.moduleDeps ++ Seq(
+    rocketchip, huancun
+  )
+
   object test extends SbtModuleTests with TestModule.ScalaTest {
     override def ivyDeps = super.ivyDeps() ++ Agg(
       getVersion("chiseltest"),

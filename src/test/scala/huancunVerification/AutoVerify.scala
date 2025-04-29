@@ -1,9 +1,9 @@
 package huancunVerification
 
-import circt.stage.ChiselStage
-import HuanCun._
+import chisel3.stage.ChiselStage
+import huancun._
 import freechips.rocketchip.diplomacy.{DisableMonitors, LazyModule}
-import org.chipsalliance.cde.config.Config
+import chipsalliance.rocketchip.config._
 
 import java.io._
 import scala.collection.mutable.ArrayBuffer
@@ -43,10 +43,9 @@ object AutoVerify extends App {
   val path = "/home/lyj238/VerifyL2"
   val top = DisableMonitors(p => LazyModule(new VerifyTop()(p)))(config)
 
-  FileRegisters.writeOutputFile(
-    "Verilog",
-    "VerifyTop.sv",
-    ChiselStage.emitSystemVerilog(top.module, firtoolOpts = Array("--disable-annotation-unknown"))
+  (new ChiselStage).emitSystemVerilog(
+    top.module,
+    Array("--target-dir", "Verilog")
   )
   //  val cp = s"cp Verilog/VerifyTop.sv .".!
   val filename = s"VerifyTop_${suffix}.sv"

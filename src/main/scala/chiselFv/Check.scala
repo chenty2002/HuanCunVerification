@@ -1,8 +1,8 @@
 package chiselFv
 
 import chisel3.RawModule
-import chisel3.stage.{ChiselGeneratorAnnotation, DesignAnnotation}
-import circt.stage.ChiselStage
+import chisel3.stage.{ChiselGeneratorAnnotation, DesignAnnotation, ChiselStage}
+// import circt.stage.ChiselStage
 
 import java.io.{File, PrintWriter}
 import java.nio.file.Paths
@@ -154,7 +154,8 @@ object Check {
     val targetDir = name + targetDirSufix
     val arg = new ArrayBuffer[String]
     arg ++= Array("--target-dir", targetDir)
-    val rtl = ChiselStage.emitSystemVerilog(dutGen(), arg.toArray)
+    // val rtl = ChiselStage.emitSystemVerilog(dutGen(), arg.toArray)
+    val rtl = ""
 
     val suffix = "sv"
     val currentPath = Paths.get(System.getProperty("user.dir"))

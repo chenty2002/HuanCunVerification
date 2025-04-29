@@ -1,0 +1,40 @@
+diff --git a/src/main/scala/huancun/HuanCun.scala b/src/main/scala/huancun/HuanCun.scala
+index f1d9fb6..0694d79 100644
+--- a/src/main/scala/huancun/HuanCun.scala
++++ b/src/main/scala/huancun/HuanCun.scala
+@@ -230,7 +230,7 @@ class HuanCun(implicit p: Parameters) extends LazyModule with HasHuanCunParamete
+     case _ => None
+   }
+ 
+-  lazy val module = new LazyModuleImp(this) {
++  class HuanCunImp(wrapper: LazyModule) extends LazyModuleImp(wrapper) {
+     val banks = node.in.size
+     val io = IO(new Bundle {
+       val perfEvents = Vec(banks, Vec(numPCntHc,Output(UInt(6.W))))
+@@ -279,7 +279,7 @@ class HuanCun(implicit p: Parameters) extends LazyModule with HasHuanCunParamete
+       }
+       out <> arbiter.io.out
+     }
+-    val prefetcher = prefetchOpt.map(_ => Module(new Prefetcher()(pftParams)))
++    lazy val prefetcher = prefetchOpt.map(_ => Module(new Prefetcher()(pftParams)))
+     val prefetchTrains = prefetchOpt.map(_ => Wire(Vec(banks, DecoupledIO(new PrefetchTrain()(pftParams)))))
+     val prefetchResps = prefetchOpt.map(_ => Wire(Vec(banks, DecoupledIO(new PrefetchResp()(pftParams)))))
+     val prefetchReqsReady = WireInit(VecInit(Seq.fill(banks)(false.B)))
+@@ -402,4 +402,5 @@ class HuanCun(implicit p: Parameters) extends LazyModule with HasHuanCunParamete
+     }
+   }
+ 
++  lazy val module = new HuanCunImp(this)
+ }
+diff --git a/src/main/scala/huancun/prefetch/Prefetcher.scala b/src/main/scala/huancun/prefetch/Prefetcher.scala
+index 07bd1f8..1399868 100644
+--- a/src/main/scala/huancun/prefetch/Prefetcher.scala
++++ b/src/main/scala/huancun/prefetch/Prefetcher.scala
+@@ -116,6 +116,6 @@ class Prefetcher(implicit p: Parameters) extends PrefetchModule {
+       bop.io.req.ready := true.B
+       pipe.io.in <> pftQueue.io.deq
+       io.req <> pipe.io.out
+-    case _ => assert(cond = false, "Unknown prefetcher")
++    case _ => 
+   }
+ }

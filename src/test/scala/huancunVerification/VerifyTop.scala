@@ -1,15 +1,15 @@
 package huancunVerification
 
 import chisel3._
-import circt.stage.ChiselStage
+import chisel3.stage.ChiselStage
 import chisel3.util._
 import chisel3.util.experimental.BoringUtils
 import chiselFv._
-import HuanCun._
+import huancun._
 import huancunAsL1._
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.tilelink._
-import org.chipsalliance.cde.config._
+import chipsalliance.rocketchip.config._
 
 
 class VerifyTop()(implicit p: Parameters) extends LazyModule {
@@ -51,7 +51,7 @@ class VerifyTop()(implicit p: Parameters) extends LazyModule {
   val huancunAsL1 = (0 until nrL2).map(i => LazyModule(new HuanCunAsL1()(new Config((_, _, _) => {
     case HCCacheParameters => HCCacheParameters(
       name = s"L1",
-      level = 2,
+      level = 1,
       inclusive = false,
       clientCaches = Seq(CacheParameters(sets = 32, ways = 8, blockGranularity = 5, name = "L2")),
       prefetch = Some(InputAsPrefectchParam()),
@@ -61,7 +61,7 @@ class VerifyTop()(implicit p: Parameters) extends LazyModule {
   }))))
   val l1d_nodes = huancunAsL1.map(_.node)
 
-  val huancun = (0 until nrL2).map(i => LazyModule(new HuanCun()(new Config((_, _, _) => {
+  val huancunAsL2 = (0 until nrL2).map(i => LazyModule(new HuanCun()(new Config((_, _, _) => {
     case HCCacheParamsKey => HCCacheParameters(
       name = s"L2",
       level = 2,
@@ -72,7 +72,7 @@ class VerifyTop()(implicit p: Parameters) extends LazyModule {
       echoField = Seq(DirtyField())
     )
   }))))
-  val l2_nodes = huancun.map(_.node)
+  val l2_nodes = huancunAsL2.map(_.node)
 
   val l3 = LazyModule(new HuanCun()(new Config((_, _, _) => {
     case HCCacheParamsKey => HCCacheParameters(
@@ -118,9 +118,6 @@ class VerifyTop()(implicit p: Parameters) extends LazyModule {
     dontTouch(clean)
     dontTouch(dump)
 
-    huancunAsL1.foreach(_.module.io.debugTopDown <> DontCare)
-    huancun.foreach(_.module.io.debugTopDown <> DontCare)
-
     l1d_nodes.foreach { node =>
       val (l1_in, _) = node.in.head
       dontTouch(l1_in)
@@ -153,9 +150,8 @@ object VerifyTop extends App {
   })
   val top = DisableMonitors(p => LazyModule(new VerifyTop()(p)))(config)
 
-  FileRegisters.writeOutputFile(
-    "Verilog",
-    "VerifyTop.sv",
-    ChiselStage.emitSystemVerilog(top.module, firtoolOpts = Array("--disable-annotation-unknown"))
+  (new ChiselStage).emitSystemVerilog(
+    top.module,
+    Array("--target-dir", "Verilog")
   )
 }

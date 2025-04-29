@@ -18,9 +18,9 @@
 package huancunAsL1
 
 import chisel3._
-import HuanCun._
+import huancun._
 import freechips.rocketchip.diplomacy._
-import org.chipsalliance.cde.config.Parameters
+import chipsalliance.rocketchip.config.Parameters
 
 class HuanCunAsL1(implicit p: Parameters) extends HuanCun {
   println(s"prefetchers: ${cacheParams.prefetch}")
