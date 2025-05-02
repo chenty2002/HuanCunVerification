@@ -49,7 +49,7 @@ class VerifyTop()(implicit p: Parameters) extends LazyModule {
   val l0_nodes = (0 until nrL2).map(i => createClientNode(s"L0_$i", 32))
 
   val huancunAsL1 = (0 until nrL2).map(i => LazyModule(new HuanCunAsL1()(new Config((_, _, _) => {
-    case HCCacheParameters => HCCacheParameters(
+    case HCCacheParamsKey => HCCacheParameters(
       name = s"L1",
       level = 1,
       inclusive = false,

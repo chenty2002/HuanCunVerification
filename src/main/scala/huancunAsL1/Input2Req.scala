@@ -22,6 +22,7 @@ class Input2Req(implicit p: Parameters) extends Prefetcher {
   io.req.bits.set := parseFullAddress(io_inputAddr)._2
   io.req.bits.needT := io_inputNeedT
   io.req.bits.source := 0.U
+  io.req.bits.isBOP := false.B
   // io.req.bits.pfSource := PfSource.NoWhere.id.U
 
   // train, resp, tlb_req are not used
