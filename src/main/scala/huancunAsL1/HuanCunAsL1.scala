@@ -26,7 +26,7 @@ class HuanCunAsL1(implicit p: Parameters) extends HuanCun {
   println(s"prefetchers: ${cacheParams.prefetch}")
   assert(cacheParams.prefetch.exists(_.isInstanceOf[InputAsPrefectchParam]))
 
-  class HuanCunAsL1Imp(wrapper: LazyModule) extends HuanCunImp(wrapper) {
+  class HuanCunAsL1Imp(wrapper: HuanCunAsL1) extends HuanCunImp(wrapper) {
     override lazy val prefetcher = prefetchOpt.map(_ => Module(new Input2Req()(pftParams)))
     val fullAddrBits = node.in.head._2.bundle.addressBits
 

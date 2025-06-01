@@ -9,10 +9,10 @@ test:
 	mill -i HuanCun.test.test
 
 verify:
-	mill -i HuanCunVerification.test.runMain huancunVerification.VerifyTop
+	0.9.8 -i HuanCunVerification.test.runMain huancunVerification.VerifyTop
 
 auto:
-	mill -i HuanCunVerification.test.runMain huancunVerification.AutoVerify
+	0.9.8 -i HuanCunVerification.test.runMain huancunVerification.AutoVerify
 
 
 test-top-l2:

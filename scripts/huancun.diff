@@ -1,16 +1,79 @@
+diff --git a/src/main/scala/huancun/DataStorage.scala b/src/main/scala/huancun/DataStorage.scala
+index d851976..bd2de44 100644
+--- a/src/main/scala/huancun/DataStorage.scala
++++ b/src/main/scala/huancun/DataStorage.scala
+@@ -42,7 +42,7 @@ class DataStorage(implicit p: Parameters) extends HuanCunModule {
+   /* Define some internal parameters */
+   val nrStacks = 2
+   val stackBits = log2Ceil(nrStacks)
+-  val bankBytes = 8
++  val bankBytes = 1
+   val rowBytes = nrStacks * beatBytes
+   val nrRows = sizeBytes / rowBytes
+   val nrBanks = rowBytes / bankBytes
+diff --git a/src/main/scala/huancun/HCCacheParameters.scala b/src/main/scala/huancun/HCCacheParameters.scala
+index 9b7a383..ba8a2e6 100644
+--- a/src/main/scala/huancun/HCCacheParameters.scala
++++ b/src/main/scala/huancun/HCCacheParameters.scala
+@@ -138,7 +138,7 @@ case class HCCacheParameters
+ ) {
+   require(ways > 0)
+   require(sets > 0)
+-  require(channelBytes.d.get >= 8)
++  // require(channelBytes.d.get >= 8)
+   require(dirReadPorts == 1, "now we only use 1 read port")
+   if (!inclusive) {
+     require(clientCaches.nonEmpty, "Non-inclusive cache need to know client cache information")
 diff --git a/src/main/scala/huancun/HuanCun.scala b/src/main/scala/huancun/HuanCun.scala
-index f1d9fb6..0694d79 100644
+index f1d9fb6..12155a5 100644
 --- a/src/main/scala/huancun/HuanCun.scala
 +++ b/src/main/scala/huancun/HuanCun.scala
-@@ -230,7 +230,7 @@ class HuanCun(implicit p: Parameters) extends LazyModule with HasHuanCunParamete
+@@ -51,7 +51,7 @@ trait HasHuanCunParameters {
+   val setBits = log2Ceil(cacheParams.sets)
+   val offsetBits = log2Ceil(blockBytes)
+   val beatBits = offsetBits - log2Ceil(beatBytes)
+-  val pageOffsetBits = log2Ceil(cacheParams.pageBytes)
++  val pageOffsetBits = 2
+   val clientMaxWays = cacheParams.clientCaches.map(_.ways).fold(0)(math.max)
+   val maxWays = math.max(clientMaxWays, cacheParams.ways)
+ 
+@@ -210,7 +210,7 @@ class HuanCun(implicit p: Parameters) extends LazyModule with HasHuanCunParamete
+             fifoId = None
+           )
+         },
+-        beatBytes = 32,
++        beatBytes = 1,
+         minLatency = 2,
+         responseFields = cacheParams.respField,
+         requestKeys = cacheParams.reqKey,
+@@ -230,8 +230,8 @@ class HuanCun(implicit p: Parameters) extends LazyModule with HasHuanCunParamete
      case _ => None
    }
  
 -  lazy val module = new LazyModuleImp(this) {
-+  class HuanCunImp(wrapper: LazyModule) extends LazyModuleImp(wrapper) {
-     val banks = node.in.size
+-    val banks = node.in.size
++  class HuanCunImp(wrapper: HuanCun) extends LazyModuleImp(wrapper) {
++    val banks = wrapper.node.in.size
      val io = IO(new Bundle {
        val perfEvents = Vec(banks, Vec(numPCntHc,Output(UInt(6.W))))
+       val ecc_error = Valid(UInt(64.W))
+@@ -261,12 +261,12 @@ class HuanCun(implicit p: Parameters) extends LazyModule with HasHuanCunParamete
+         println(fs.map{f => s"$prefix/${f.key.name}: (${f.data.getWidth}-bit)"}.mkString("\n"))
+       }
+     }
+-    print_bundle_fields(node.in.head._2.bundle.requestFields, "usr")
+-    print_bundle_fields(node.in.head._2.bundle.echoFields, "echo")
++    print_bundle_fields(wrapper.node.in.head._2.bundle.requestFields, "usr")
++    print_bundle_fields(wrapper.node.in.head._2.bundle.echoFields, "echo")
+ 
+     val pftParams: Parameters = p.alterPartial {
+-      case EdgeInKey => node.in.head._2
+-      case EdgeOutKey => node.out.head._2
++      case EdgeInKey => wrapper.node.in.head._2
++      case EdgeOutKey => wrapper.node.out.head._2
+       case BankBitsKey => bankBits
+     }
+     def arbTasks[T <: Bundle](out: DecoupledIO[T], in: Seq[DecoupledIO[T]], name: Option[String] = None) = {
 @@ -279,7 +279,7 @@ class HuanCun(implicit p: Parameters) extends LazyModule with HasHuanCunParamete
        }
        out <> arbiter.io.out
@@ -20,11 +83,57 @@ index f1d9fb6..0694d79 100644
      val prefetchTrains = prefetchOpt.map(_ => Wire(Vec(banks, DecoupledIO(new PrefetchTrain()(pftParams)))))
      val prefetchResps = prefetchOpt.map(_ => Wire(Vec(banks, DecoupledIO(new PrefetchResp()(pftParams)))))
      val prefetchReqsReady = WireInit(VecInit(Seq.fill(banks)(false.B)))
+@@ -289,7 +289,7 @@ class HuanCun(implicit p: Parameters) extends LazyModule with HasHuanCunParamete
+         prefetcher.get.io.req.ready := Cat(prefetchReqsReady).orR
+         arbTasks(prefetcher.get.io.resp, prefetchResps.get, Some("prefetch_resp"))
+     }
+-    pf_recv_node match {
++    wrapper.pf_recv_node match {
+       case Some(x) =>
+         prefetcher.get.io.recv_addr.valid := x.in.head._1.addr_valid
+         prefetcher.get.io.recv_addr.bits := x.in.head._1.addr
+@@ -316,9 +316,9 @@ class HuanCun(implicit p: Parameters) extends LazyModule with HasHuanCunParamete
+       }
+     }
+ 
+-    val slices = node.in.zip(node.out).zipWithIndex.map {
++    val slices = wrapper.node.in.zip(wrapper.node.out).zipWithIndex.map {
+       case (((in, edgeIn), (out, edgeOut)), i) =>
+-        require(in.params.dataBits == out.params.dataBits)
++        // require(in.params.dataBits == out.params.dataBits)
+         val rst = if(cacheParams.level == 3 && !cacheParams.simulation) {
+           ResetGen()
+         } else reset
+@@ -368,7 +368,7 @@ class HuanCun(implicit p: Parameters) extends LazyModule with HasHuanCunParamete
+     ecc_arb.io.in <> VecInit(slices_ecc)
+     io.ecc_error.valid := ecc_arb.io.out.fire()
+     io.ecc_error.bits := restoreAddressUInt(ecc_arb.io.out.bits.addr, ecc_arb.io.chosen)
+-    ctrl_unit.foreach { c =>
++    wrapper.ctrl_unit.foreach { c =>
+       val ctl_reqs = slices.zipWithIndex.map {
+         case (s, i) => Pipeline.pipeTo(s.io.ctl_req, depth = 2, pipe = false, name = Some(s"req_buffer_$i"))
+       }
+@@ -388,13 +388,13 @@ class HuanCun(implicit p: Parameters) extends LazyModule with HasHuanCunParamete
+       c.module.io_ecc <> ecc_arb.io.out
+       c.module.io_ecc.bits.addr := io.ecc_error.bits
+     }
+-    if (ctrl_unit.isEmpty) {
++    if (wrapper.ctrl_unit.isEmpty) {
+       slices.foreach(_.io.ctl_req <> DontCare)
+       slices.foreach(_.io.ctl_req.valid := false.B)
+       slices.foreach(_.io.ctl_resp.ready := false.B)
+       ecc_arb.io.out.ready := true.B
+     }
+-    node.edges.in.headOption.foreach { n =>
++    wrapper.node.edges.in.headOption.foreach { n =>
+       n.client.clients.zipWithIndex.foreach {
+         case (c, i) =>
+           println(s"\t${i} <= ${c.name}")
 @@ -402,4 +402,5 @@ class HuanCun(implicit p: Parameters) extends LazyModule with HasHuanCunParamete
      }
    }
  
-+  lazy val module = new HuanCunImp(this)
++  lazy val module = new HuanCunImp(this);
  }
 diff --git a/src/main/scala/huancun/prefetch/Prefetcher.scala b/src/main/scala/huancun/prefetch/Prefetcher.scala
 index 07bd1f8..1399868 100644
